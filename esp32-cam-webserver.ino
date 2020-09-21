@@ -47,8 +47,11 @@
 // Pin Mappings
 #include "camera_pins.h"
 
+// SPIFFS filesystem (used for non-volatile camera settings and face DB store if available)
+#include "storage.h"
+
 // Declare external function from app_httpd.cpp
-void startCameraServer(int hPort, int sPort);
+extern void startCameraServer(int hPort, int sPort);
 
 // A Name for the Camera. (set in myconfig.h)
 #if defined(CAM_NAME)
@@ -143,17 +146,6 @@ void setup() {
   Serial.print("Code Built: ");
   Serial.println(myVer);
 
-  // initial rotation
-  // can be set in myconfig.h
-  #if !defined(CAM_ROTATION)
-    #define CAM_ROTATION 0
-  #endif
-
-  // set the initialisation for image rotation
-  // ToDo; might be better to handle this with an enum?
-  int n __attribute__((unused)) = snprintf(myRotation,sizeof(myRotation),"%d",CAM_ROTATION); 
-
-
   #if defined(LED_PIN)  // If we have a notification LED, set it to output
     pinMode(LED_PIN, OUTPUT);
     digitalWrite(LED_PIN, LED_OFF);
@@ -166,7 +158,18 @@ void setup() {
   } else {
     Serial.println("No lamp, or lamp disabled in config");
   }
-   
+
+  // initial rotation
+  // can be set in myconfig.h
+  #if !defined(CAM_ROTATION)
+    #define CAM_ROTATION 0
+  #endif
+
+  // set the initialisation for image rotation
+  // ToDo; might be better to handle this with an enum?
+  int n __attribute__((unused)) = snprintf(myRotation,sizeof(myRotation),"%d",CAM_ROTATION); 
+  
+  // Create camera config structure; and populate with hardware and other defaults 
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -250,7 +253,16 @@ void setup() {
     s->set_framesize(s, FRAMESIZE_SVGA);
   #endif
 
-  // Feedback that hardware init is complete and we are now attempting to connect
+  // We now have camera with default init
+  // check for saved preferences and apply them
+
+  #if defined(HAVE_FS)
+    filesystemStart();
+    loadPrefs(SPIFFS);
+  #endif
+
+  // Feedback that we are now attempting to connect
+  Serial.println();
   Serial.println("Wifi Initialisation");
   flashLED(400);
   delay(100);

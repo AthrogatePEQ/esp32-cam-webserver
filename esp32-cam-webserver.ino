@@ -151,14 +151,6 @@ void setup() {
     digitalWrite(LED_PIN, LED_OFF);
   #endif
 
-  if (lampVal != -1) {
-    ledcSetup(lampChannel, pwmfreq, pwmresolution);  // configure LED PWM channel
-    setLamp(lampVal);                                // set default value
-    ledcAttachPin(LAMP_PIN, lampChannel);            // attach the GPIO pin to the channel
-  } else {
-    Serial.println("No lamp, or lamp disabled in config");
-  }
-
   // initial rotation
   // can be set in myconfig.h
   #if !defined(CAM_ROTATION)
@@ -283,10 +275,25 @@ void setup() {
   // We now have camera with default init
   // check for saved preferences and apply them
 
+  // If we have a local filesystem, use that to load saved preferences
   #if defined(HAVE_FS)
     filesystemStart();
     loadPrefs(SPIFFS);
   #endif
+
+  /* 
+   * We should now have all our default and/or saved setting loaded,
+   * The camera settings have also been applied.
+   * Now to initialise the rest of the hardware.
+   */
+
+  if (lampVal != -1) {
+    ledcSetup(lampChannel, pwmfreq, pwmresolution);  // configure LED PWM channel
+    setLamp(lampVal);                                // set default value
+    ledcAttachPin(LAMP_PIN, lampChannel);            // attach the GPIO pin to the channel
+  } else {
+    Serial.println("No lamp, or lamp disabled in config");
+  }
 
   // Feedback that we are now attempting to connect
   Serial.println();

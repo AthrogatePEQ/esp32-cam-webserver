@@ -1,7 +1,13 @@
 #include "storage.h"
 
-// This is defined in the main .ino file
+// These are defined in the main .ino file
 extern void flashLED(int flashtime);
+
+extern char *myRotation;           // Rotation
+extern int lampVal;                 // The current Lamp value
+extern int8_t detection_enabled;    // Face detection enable
+extern int8_t recognition_enabled;  // Face recognition enable
+
 
 /*
  * Useful utility when debugging... 
@@ -39,56 +45,93 @@ void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
   Serial.println();
 }
 
-void loadPrefs(fs::FS &fs){
+void dumpPrefs(fs::FS &fs){
   if (fs.exists(PREFERENCES_FILE)) {
-    Serial.printf("Reading file: %s\n", PREFERENCES_FILE);
-    File filedump = fs.open(PREFERENCES_FILE, FILE_READ);
-    Serial.println("<BEGIN>");
-    while (filedump.available()) {
-      byte a = filedump.read();
-      if (isPrintable(a)) Serial.printf("%02X - %c\n",a,a);
-      else Serial.printf("%02X -\n",a);
+    Serial.printf("Showing contents of %s\n", PREFERENCES_FILE);
+    // Dump contents for debug
+    File file = fs.open(PREFERENCES_FILE, FILE_READ);
+    Serial.print("<BEGIN>");
+    while (file.available()) {
+      byte a = file.read();
+      //if (isPrintable(a)) Serial.print(char(a));
+      //else Serial.print('.');
+      Serial.print(char(a));
     }
     Serial.println("<END>");
-    filedump.close();
-    
-    File file = fs.open(PREFERENCES_FILE, FILE_READ);
-    sensor_t * s = esp_camera_sensor_get();
-    int bytes = file.read((byte *)s, sizeof(*s));
-    Serial.print("Read: ");
-    Serial.print(bytes);
-    Serial.println(" bytes");
     file.close();
   } else {
-    Serial.printf("Preferences file: %s not found, using system defaults.\n", PREFERENCES_FILE);
+    Serial.printf("%s not found, nothing to dump.\n", PREFERENCES_FILE);
+  }
+}
+
+void loadPrefs(fs::FS &fs){
+  if (fs.exists(PREFERENCES_FILE)) {
+    dumpPrefs(SPIFFS);
+    Serial.printf("Reading file %s\n", PREFERENCES_FILE);
+    // This is the real operation.
+    File file = fs.open(PREFERENCES_FILE, FILE_READ);
+    if (!file) {
+      Serial.println("Failed to open preferences file");
+      return;
+    }
+    size_t size = file.size();
+    if (size > 800) {
+      Serial.println("Preferences file size is too large, maybe corrupt");
+      return;
+    }
+    // Allocate the memory for deserialisation
+    StaticJsonDocument<1023> doc;
+    // Parse the prefs file
+    DeserializationError err=deserializeJson(doc, file);
+    if(err) {
+      Serial.print(F("deserializeJson() failed with code: "));
+      Serial.println(err.c_str());
+      return;
+    }
+    // Sensor reference
+    sensor_t * s = esp_camera_sensor_get();
+    // process all the settings we save
+    lampVal = doc["lamp"];
+    s->set_framesize(s, (framesize_t)doc["framesize"]);
+    s->set_quality(s, doc["quality"]);
+    s->set_contrast(s, doc["contrast"]);
+    s->set_brightness(s, doc["brightness"]);
+    s->set_saturation(s, doc["saturation"]);
+    s->set_special_effect(s, doc["special_effect"]);
+    s->set_hmirror(s, doc["hmirror"]);
+    s->set_vflip(s, doc["vflip"]);
+    // close the file
+    file.close();
+  } else {
+    Serial.printf("%s not found, using system defaults.\n", PREFERENCES_FILE);
   }
 }
 
 void savePrefs(fs::FS &fs){
   if (fs.exists(PREFERENCES_FILE)) {
-    Serial.printf("Preferences file: %s already exists. Overwriting.\n", PREFERENCES_FILE);
+    Serial.printf("%s updated\n", PREFERENCES_FILE);
   } else {
-    Serial.printf("Creating: %s\n", PREFERENCES_FILE);
+    Serial.printf("%s created\n", PREFERENCES_FILE);
   }
   File file = fs.open(PREFERENCES_FILE, FILE_WRITE);
+  StaticJsonDocument<1023> doc;
   sensor_t * s = esp_camera_sensor_get();
-  /* Only save the first part of the structure; we dont need all the pointers to methods/functions
-     See: https://github.com/espressif/esp32-camera/blob/master/driver/include/sensor.h#L142 
-     the +2 is bacause tha resulting sensor_t structure is padded by the compiler. */
-  int h = sizeof(sensor_id_t) + sizeof(uint8_t) + sizeof(pixformat_t) + sizeof(camera_status_t) + 2;
-  int bytes = file.write((byte *)s, h);
-  Serial.print("Wrote: ");
-  Serial.print(bytes);
-  Serial.println(" bytes");
-  if (bytes != h){
-    Serial.println("- file write failed");
-  }
+  doc["lamp"] = lampVal;
+  doc["framesize"] = s->status.framesize;
+  doc["quality"] = s->status.quality;
+  doc["contrast"] = s->status.contrast;
+  doc["brightness"] = s->status.brightness;
+  doc["saturation"] = s->status.saturation;
+  doc["special_effect"] = s->status.special_effect;
+  doc["hmirror"] = s->status.hmirror;
+  doc["vflip"] = s->status.vflip;
+  serializeJson(doc, file);
   file.close();
 }
 
 void removePrefs(fs::FS &fs) {
   if (fs.exists(PREFERENCES_FILE)) {
-    Serial.printf("Removing: %s\r\n", PREFERENCES_FILE);
+    Serial.printf("Removing %s\r\n", PREFERENCES_FILE);
     if (!fs.remove(PREFERENCES_FILE)) {
       Serial.println("Error removing preferences");
     }

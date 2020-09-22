@@ -261,6 +261,8 @@ const uint8_t index_ov2640_html[] = R"=====(
               </div>
               <section id="buttons">
                 <button id="face_enroll" class="disabled" disabled="disabled">Enroll Face</button>
+                <button id="save_prefs">Save Prefs</button>
+                <button id="clear_prefs">Erase Prefs</button>
               </section>
               <div class="input-group" id="cam_name-group">
                 <label for="cam_name">Name:</label>
@@ -311,6 +313,8 @@ const uint8_t index_ov2640_html[] = R"=====(
     const recognize = document.getElementById('face_recognize')
     const framesize = document.getElementById('framesize')
     const swapButton = document.getElementById('swap-viewer')
+    const savePrefsButton = document.getElementById('save_prefs')
+    const clearPrefsButton = document.getElementById('clear_prefs')
 
     const hide = el => {
       el.classList.add('hidden')
@@ -590,6 +594,15 @@ const uint8_t index_ov2640_html[] = R"=====(
     swapButton.onclick = () => {
       window.open('/view','_self');
     }
+ 
+    savePrefsButton.onclick = () => {
+      window.open('/save_prefs', "_blank");
+    }
+
+    clearPrefsButton.onclick = () => {
+      window.open('/remove_prefs', "_blank");
+    }
+
 
   })
   </script>

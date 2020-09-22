@@ -575,9 +575,7 @@ static esp_err_t cmd_handler(httpd_req_t *req){
       lampVal = constrain(val,0,100);
       setLamp(lampVal);
     }
-    else if(!strcmp(variable, "rotate")) {
-      sprintf(myRotation, "%i", val);
-    }
+    else if(!strcmp(variable, "rotate")) sprintf(myRotation, "%i", val);
     else {
         res = -1;
     }
@@ -688,7 +686,8 @@ static esp_err_t save_prefs_handler(httpd_req_t *req){
     savePrefs(SPIFFS);
     httpd_resp_set_type(req, "text/css");
     httpd_resp_set_hdr(req, "Content-Encoding", "identity");
-    return httpd_resp_send(req, "Saved", 5);
+    char resp[] = "Preferences saved";
+    return httpd_resp_send(req, resp, strlen(resp));
 }
 
 static esp_err_t remove_prefs_handler(httpd_req_t *req){
@@ -698,17 +697,20 @@ static esp_err_t remove_prefs_handler(httpd_req_t *req){
     removePrefs(SPIFFS);
     httpd_resp_set_type(req, "text/css");
     httpd_resp_set_hdr(req, "Content-Encoding", "identity");
-    return httpd_resp_send(req, "Removed", 7);
+    char resp[] = "Preferences file removed, reboot will revert to default settings";
+    return httpd_resp_send(req, resp, strlen(resp));
 }
 
-static esp_err_t load_prefs_handler(httpd_req_t *req){
+extern void dumpPrefs(fs::FS &fs);
+static esp_err_t dump_prefs_handler(httpd_req_t *req){
     flashLED(75);  // a little feedback to user
     delay(75);
     flashLED(75);
-    loadPrefs(SPIFFS);
+    dumpPrefs(SPIFFS);
     httpd_resp_set_type(req, "text/css");
     httpd_resp_set_hdr(req, "Content-Encoding", "identity");
-    return httpd_resp_send(req, "Loaded", 6);
+    char resp[] = "DEBUG: Preferences file Dumped to serial";
+    return httpd_resp_send(req, resp, strlen(resp));
 }
 
 static esp_err_t style_handler(httpd_req_t *req){
@@ -833,10 +835,10 @@ void startCameraServer(int hPort, int sPort){
         .user_ctx  = NULL
     };
 
-    httpd_uri_t load_prefs_uri = {
-        .uri       = "/load_prefs",
+    httpd_uri_t dump_prefs_uri = {
+        .uri       = "/dump_prefs",
         .method    = HTTP_GET,
-        .handler   = load_prefs_handler,
+        .handler   = dump_prefs_handler,
         .user_ctx  = NULL
     };
 
@@ -894,7 +896,7 @@ void startCameraServer(int hPort, int sPort){
         httpd_register_uri_handler(camera_httpd, &favicon_ico_uri);
         httpd_register_uri_handler(camera_httpd, &save_prefs_uri);
         httpd_register_uri_handler(camera_httpd, &remove_prefs_uri);
-        httpd_register_uri_handler(camera_httpd, &load_prefs_uri);
+        httpd_register_uri_handler(camera_httpd, &dump_prefs_uri);
     }
 
 

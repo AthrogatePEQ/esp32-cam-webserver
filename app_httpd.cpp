@@ -40,7 +40,6 @@ extern char streamURL[];            // Stream URL
 extern int8_t detection_enabled;    // Face detection enable
 extern int8_t recognition_enabled;  // Face recognition enable
 
-
 #include "fb_gfx.h"
 #include "fd_forward.h"
 #include "fr_forward.h"

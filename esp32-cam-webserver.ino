@@ -281,6 +281,7 @@ void setup() {
    * Now to initialise the rest of the hardware.
    */
 
+  // Initialise and set the lamp
   if (lampVal != -1) {
     ledcSetup(lampChannel, pwmfreq, pwmresolution);  // configure LED PWM channel
     setLamp(lampVal);                                // set default value
@@ -380,7 +381,9 @@ void setup() {
   // Construct the Stream URL
   sprintf(streamURL, "http://%d.%d.%d.%d:%d/", ip[0], ip[1], ip[2], ip[3], streamPort);
 
-  Serial.printf("\nCamera Ready!\nUse '%s' to connect\n\n", httpURL);
+  Serial.printf("\nCamera Ready!\nUse '%s' to connect\n", httpURL);
+  Serial.printf("Raw stream URL is '%s'\n", streamURL);
+  Serial.printf("Stream viewer available at '%sview'", streamURL);
 }
 
 void loop() {
